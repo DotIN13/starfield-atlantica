@@ -1,12 +1,14 @@
-import { log } from "@zos/utils";
+import { log, px } from "@zos/utils";
 import { getScene, SCENE_AOD } from "@zos/app";
 import ui from "@zos/ui";
+import { Time } from "@zos/sensor";
 
 import { Compass } from "@zos/sensor";
 
-const logger = log.getLogger("timer-page");
+const logger = log.getLogger("starfield-watchface");
 
 const watchW = 480;
+const time = new Time();
 let rootPath = null;
 let weekEnArray = null;
 let weekChArray = null;
@@ -45,78 +47,136 @@ function range(start, end, step = 1) {
   return result;
 }
 
+const getFormatTime = () => {
+  const hh = time.getFormatHour().toString().padStart(2, "0");
+  const mm = time.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+};
+
 WatchFace({
   initView() {
     rootPath = "images/";
-    weekEnArray = [
-      rootPath + "week_en/1.png",
-      rootPath + "week_en/2.png",
-      rootPath + "week_en/3.png",
-      rootPath + "week_en/4.png",
-      rootPath + "week_en/5.png",
-      rootPath + "week_en/6.png",
-      rootPath + "week_en/7.png",
-    ];
-    weekChArray = [
-      rootPath + "week_ch/1.png",
-      rootPath + "week_ch/2.png",
-      rootPath + "week_ch/3.png",
-      rootPath + "week_ch/4.png",
-      rootPath + "week_ch/5.png",
-      rootPath + "week_ch/6.png",
-      rootPath + "week_ch/7.png",
-    ];
+    // weekEnArray = [
+    //   rootPath + "week_en/1.png",
+    //   rootPath + "week_en/2.png",
+    //   rootPath + "week_en/3.png",
+    //   rootPath + "week_en/4.png",
+    //   rootPath + "week_en/5.png",
+    //   rootPath + "week_en/6.png",
+    //   rootPath + "week_en/7.png",
+    // ];
+    // weekChArray = [
+    //   rootPath + "week_ch/1.png",
+    //   rootPath + "week_ch/2.png",
+    //   rootPath + "week_ch/3.png",
+    //   rootPath + "week_ch/4.png",
+    //   rootPath + "week_ch/5.png",
+    //   rootPath + "week_ch/6.png",
+    //   rootPath + "week_ch/7.png",
+    // ];
 
-    bigNumArray = range(10).map((v) => {
-      return img(`bigNum/${v}.png`);
+    // bigNumArray = range(10).map((v) => {
+    //   return img(`bigNum/${v}.png`);
+    // });
+
+    // smallNumArr = range(10).map((v) => {
+    //   return img(`smallNum/${v}.png`);
+    // });
+
+    // dotImage = img("smallNum/d.png");
+
+    // let pointObj = {
+    //   hour_centerX: px(239),
+    //   hour_centerY: px(239),
+    //   hour_posX: px(32),
+    //   hour_posY: px(167),
+    //   hour_path: img("point/h.png"),
+    //   minute_centerX: px(238),
+    //   minute_centerY: px(238),
+    //   minute_posX: px(23),
+    //   minute_posY: px(230),
+    //   minute_path: img("point/m.png"),
+    //   minute_cover_path: img("point/center.png"),
+    //   minute_cover_y: px(214),
+    //   minute_cover_x: px(214),
+    // };
+
+    const screenType = getScene();
+
+    /**
+     * Clockhands
+     */
+
+    const hourHand = ui.createWidget(ui.widget.TIME_POINTER, {
+      hour_path: img("clockhands/hour.png"),
+      hour_centerX: px(watchW / 2),
+      hour_centerY: px(watchW / 2),
+      hour_posX: px(34 / 2),
+      hour_posY: px(watchW / 2 + 1),
+      show_level: ui.show_level.ONLY_NORMAL,
     });
 
-    smallNumArr = range(10).map((v) => {
-      return img(`smallNum/${v}.png`);
+    const minuteHand = ui.createWidget(ui.widget.TIME_POINTER, {
+      minute_path: img("clockhands/minute.png"),
+      minute_centerX: px(watchW / 2),
+      minute_centerY: px(watchW / 2),
+      minute_posX: px(20 / 2),
+      minute_posY: px(watchW / 2 + 1),
+      show_level: ui.show_level.ONLY_NORMAL,
     });
 
-    dotImage = img("smallNum/d.png");
+    const secondHand = ui.createWidget(ui.widget.TIME_POINTER, {
+      second_path: img("clockhands/second.png"),
+      second_centerX: px(watchW / 2),
+      second_centerY: px(watchW / 2),
+      second_posX: px(15 / 2),
+      second_posY: px(watchW / 2 + 1),
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
 
-    let pointObj = {
-      hour_centerX: px(239),
-      hour_centerY: px(239),
-      hour_posX: px(32),
-      hour_posY: px(167),
-      hour_path: img("point/h.png"),
-      minute_centerX: px(238),
-      minute_centerY: px(238),
-      minute_posX: px(23),
-      minute_posY: px(230),
-      minute_path: img("point/m.png"),
-      minute_cover_path: img("point/center.png"),
-      minute_cover_y: px(214),
-      minute_cover_x: px(214),
-    };
-
-    var screenType = getScene();
-
+    /**
+     * Clock background
+     */
+  
     if (screenType == SCENE_AOD) {
       imgBg = ui.createWidget(ui.widget.FILL_RECT, {
         x: px(0),
         y: px(0),
-        w: px(480),
-        h: px(480),
+        w: px(watchW),
+        h: px(watchW),
         color: 0x000000,
       });
     } else {
-      const imageLeft = 20;
       imgBg = ui.createWidget(ui.widget.IMG, {
-        x: px(imageLeft),
-        y: px(imageLeft),
-        w: px(watchW - imageLeft * 2),
-        h: px(watchW - imageLeft * 2),
+        x: px(0),
+        y: px(0),
+        w: px(watchW),
+        h: px(watchW),
         src: img("bg/bg.png"),
-        auto_scale: true,
-        show_level: ui.show_level.ONAL_NORML,
+        // auto_scale: true,
+        show_level: ui.show_level.ONLY_NORMAL,
+      });
+
+      // Draw a white circle, and then draw a black circle with 1 less pixels of radius, to create a white ring
+      const circleRadius = 194;
+      const circle = ui.createWidget(ui.widget.CIRCLE, {
+        center_x: px(watchW / 2),
+        center_y: px(watchW / 2),
+        radius: px(circleRadius),
+        color: 0xffffff,
+        show_level: ui.show_level.ONLY_NORMAL,
+      });
+
+      const circle2 = ui.createWidget(ui.widget.CIRCLE, {
+        center_x: px(watchW / 2),
+        center_y: px(watchW / 2),
+        radius: px(circleRadius - 1),
+        color: 0x000000,
+        show_level: ui.show_level.ONLY_NORMAL,
       });
     }
 
-    const compassDial = ui.createWidget(ui.widget.IMG, {
+    this.compassDial = ui.createWidget(ui.widget.IMG, {
       x: px(120),
       y: px(120),
       w: px(240),
@@ -131,20 +191,53 @@ WatchFace({
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
+    const stepProgress = ui.createWidget(ui.widget.IMG_POINTER, {
+      src: img("steps/progress.png"),
+      center_x: px(watchW / 2), // Center of rotation
+      center_y: px(watchW / 2),
+      x: px(188), // Location of the widget, when not rotated
+      y: px(0),
+      start_angle: 180,
+      end_angle: 0,
+      cover_path: img("steps/track.png"),
+      cover_x: px(51),
+      cover_y: px(51),
+      type: ui.data_type.STEP,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    /**
+     * Center time widget
+     */
+    const centerTimeW = 180;
+    const centerTimeH = 60;
+    this.centerTime = ui.createWidget(ui.widget.TEXT, {
+      x: px(watchW / 2 - centerTimeW / 2),
+      y: px(watchW / 2 - centerTimeH / 2),
+      w: px(centerTimeW),
+      h: px(centerTimeH),
+      color: 0xffffff,
+      text_size: 60,
+      align_h: ui.align.CENTER_H,
+      align_v: ui.align.CENTER_V,
+      text_style: ui.text_style.NONE,
+      font: "fonts/nb.ttf",
+      text: getFormatTime(),
+    });
+
+    time.onPerMinute(() => {
+      this.centerTime.setProperty(ui.prop.TEXT, { text: getFormatTime() });
+    });
+
+    /**
+     * Compass Update
+     */
     // TODO: The compass update frequency is not high enough to make the pointer rotate smoothly
-    const compass = (this.compass = new Compass());
-
-    const callback = () => {
-      if (screenType == SCENE_AOD) return;
-
-      if (compass.getStatus()) {
-        console.log(compass.getDirection());
-        console.log(compass.getDirectionAngle());
-        compassDial.setProperty(ui.prop.ANGLE, compass.getDirectionAngle());
-      }
-    };
-    compass.onChange(callback);
-    compass.start();
+    if (screenType != SCENE_AOD) {
+      this.compass = new Compass();
+      this.compass.onChange(() => this.compassCallback());
+      this.compass.start();
+    }
 
     // hourPoint = ui.createWidget(ui.widget.IMG, {
     //   x: px(0),
@@ -464,6 +557,15 @@ WatchFace({
     // }
   },
 
+  compassCallback() {
+    const screenType = getScene();
+    if (screenType == SCENE_AOD) return;
+
+    if (this.compass.getStatus()) {
+      this.compassDial.setProperty(ui.prop.ANGLE, this.compass.getDirectionAngle());
+    }
+  },
+
   onInit() {
     logger.log("index page.js on init invoke");
   },
@@ -473,10 +575,21 @@ WatchFace({
     this.initView();
   },
 
+  onPause() {
+    logger.log("index page.js on pause invoke");
+    this.compass?.stop();
+  },
+
+  onResume() {
+    logger.log("index page.js on resume invoke");
+    this.compass?.start();
+    this.centerTime.setProperty(ui.prop.TEXT, { text: getFormatTime() });
+  },
+
   onDestroy() {
     logger.log("index page.js on destroy invoke");
     // When not needed for use
-    this.compass.offChange();
-    this.compass.stop();
+    this.compass?.offChange();
+    this.compass?.stop();
   },
 });
