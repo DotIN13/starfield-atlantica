@@ -1,0 +1,58 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 26584,
+    "appName": "Starfield Aurora",
+    "appType": "watchface",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "vender": "zepp",
+    "description": "starfield watchface",
+    "icon": "images/preview.png"
+  },
+  "permissions": ["device:os.compass"],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "3.0",
+      "target": "3.0",
+      "minVersion": "3.0"
+    }
+  },
+  "targets": {
+    "gtr-3-pro": {
+      "module": {
+        "watchface": {
+          "path": "watchface/gtr-3-pro/index",
+          "main": 1,
+          "editable": 1,
+          "lockscreen": 1
+        }
+      },
+      "platforms": [
+        {
+          "name": "Amazfit Balance",
+          "deviceSource": 8519936
+        },
+        {
+          "name": "Amazfit Balance",
+          "deviceSource": 8519937
+        },
+        {
+          "name": "Amazfit Balance",
+          "deviceSource": 8519939
+        }
+      ],
+      "designWidth": 480
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "name": "Starfield Aurora"
+    }
+  },
+  "defaultLanguage": "en-US",
+  "debug": true,
+  "mode": "development"
+}
