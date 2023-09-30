@@ -12,7 +12,7 @@
     "description": "Starfield watchface, made with precision and love.",
     "icon": "images/preview.png"
   },
-  "permissions": ["device:os.compass"],
+  "permissions": ["device:os.compass", "data:user.hd.spo2", "data:user.hd.heart_rate"],
   "runtime": {
     "apiVersion": {
       "compatible": "3.0.0",

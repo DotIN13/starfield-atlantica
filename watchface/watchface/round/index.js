@@ -1,14 +1,15 @@
 import { log, px } from "@zos/utils";
 import { getScene, SCENE_AOD, SCENE_WATCHFACE } from "@zos/app";
 import ui from "@zos/ui";
-import { Time } from "@zos/sensor";
-
-import { Compass } from "@zos/sensor";
+import { Time, BloodOxygen, HeartRate, Compass } from "@zos/sensor";
 
 const logger = log.getLogger("starfield-watchface");
 
 const watchW = 480;
+const gaugeW = 396;
 const time = new Time();
+const bloodOxygen = new BloodOxygen();
+const heartRate = new HeartRate();
 
 const img = (function (type) {
   return (path) => type + "/" + path;
@@ -73,6 +74,39 @@ const getFormatDay = (day) => {
 
   return dayNames[day - 1];
 };
+
+// Image for o2 and co2 indicators
+const gaugeImage = (type, value) => {
+  return img(`${type}/${value}.png`);
+};
+
+const mapO2 = (value) => {
+  if (value > 100) {
+    throw new Error("Value out of range. It must be between 95 and 100.");
+  }
+
+  if (value < 95) return 0;
+
+  // Find the percentage of where the value lies within the range 95-100.
+  let percentage = (value - 95) / (100 - 95);
+
+  // Use that percentage to find the corresponding value within the range 1-24.
+  return parseInt(23 * percentage) + 1;
+};
+
+const mapCo2 = (value) => {
+  if (value > 200) return 24;
+  if (value < 100) return 0;
+
+  let percentage = (value - 100) / (200 - 100);
+
+  return parseInt(23 * percentage) + 1;
+};
+
+const co2Bleed = [
+  72, 72, 75, 81, 88, 98, 110, 124, 139, 155, 172, 190, 209, 232, 256, 279, 301,
+  321, 340, 356, 370, 381, 389, 394, 396,
+];
 
 const normalizeAngle = (angle) => {
   while (angle < 0) angle += 360;
@@ -189,6 +223,67 @@ WatchFace({
     }
 
     /**
+     * O2 and CO2 indicators
+     */
+
+    this.o2Props = {
+      x: px(0),
+      y: px(watchW / 2 - 13.6),
+      w: px(watchW),
+      h: px(watchW / 2),
+      pos_x: px(watchW / 2 - gaugeW / 2),
+      pos_y: px(0),
+      src: gaugeImage("o2", 24),
+      // auto_scale: true,
+      show_level: ui.show_level.ONLY_NORMAL,
+    };
+    this.o2 = ui.createWidget(ui.widget.IMG, this.o2Props);
+
+    this.co2Props = {
+      x: px(0),
+      y: px(watchW / 2 - 13.6),
+      w: px(watchW),
+      h: px(watchW / 2),
+      pos_x: px(watchW / 2 + gaugeW / 2 - co2Bleed[0]),
+      pos_y: px(0),
+      src: gaugeImage("co2", 0),
+      // auto_scale: true,
+      show_level: ui.show_level.ONLY_NORMAL,
+    };
+    this.co2 = ui.createWidget(ui.widget.IMG, this.co2Props);
+
+    const o2Label = ui.createWidget(ui.widget.IMG, {
+      x: px(0),
+      y: px(0),
+      w: px(watchW),
+      h: px(watchW / 2),
+      pos_x: px(watchW / 2 - gaugeW / 2 + 23),
+      pos_y: px(watchW / 2 - 30),
+      src: img("o2.png"),
+      // auto_scale: true,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    const co2Label = ui.createWidget(ui.widget.IMG, {
+      x: px(0),
+      y: px(0),
+      w: px(watchW),
+      h: px(watchW / 2),
+      pos_x: px(watchW / 2 + gaugeW / 2 - 53),
+      pos_y: px(watchW / 2 - 30),
+      src: img("co2.png"),
+      // auto_scale: true,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    this.updateGauges();
+
+    bloodOxygen.onChange(() => this.updateGauges());
+    bloodOxygen.start();
+
+    heartRate.onLastChange(() => this.updateGauges());
+
+    /**
      * Compass
      */
     if (this.screenType == SCENE_WATCHFACE) {
@@ -206,7 +301,7 @@ WatchFace({
         center_x: px(compassW / 2),
         center_y: px(compassW / 2),
         src: img("compass/compass.png"),
-        angle: 0,
+        angle: this.getCompassAngle(),
         // auto_scale: true,
         show_level: ui.show_level.ONLY_NORMAL,
       });
@@ -214,20 +309,20 @@ WatchFace({
       logger.log("Compass widget created.");
     }
 
-    const stepProgress = ui.createWidget(ui.widget.IMG_POINTER, {
-      src: img("steps/progress.png"),
-      center_x: px(watchW / 2), // Center of rotation
-      center_y: px(watchW / 2),
-      x: px(188), // Location of the widget, when not rotated
-      y: px(0),
-      start_angle: 180,
-      end_angle: 0,
-      cover_path: img("steps/track.png"),
-      cover_x: px(51),
-      cover_y: px(51),
-      type: ui.data_type.STEP,
-      show_level: ui.show_level.ONLY_NORMAL,
-    });
+    // const stepProgress = ui.createWidget(ui.widget.IMG_POINTER, {
+    //   src: img("steps/progress.png"),
+    //   center_x: px(watchW / 2), // Center of rotation
+    //   center_y: px(watchW / 2),
+    //   x: px(188), // Location of the widget, when not rotated
+    //   y: px(0),
+    //   start_angle: 180,
+    //   end_angle: 0,
+    //   cover_path: img("steps/track.png"),
+    //   cover_x: px(51),
+    //   cover_y: px(51),
+    //   type: ui.data_type.STEP,
+    //   show_level: ui.show_level.ONLY_NORMAL,
+    // });
 
     logger.log("StepProgress widget created.");
 
@@ -236,7 +331,7 @@ WatchFace({
      */
     const centerTimeW = 180;
     const centerTimeH = 60;
-    this.centerTimeProperties = {
+    this.centerTimeProps = {
       x: px(watchW / 2 - centerTimeW / 2),
       y: px(watchW / 2 - centerTimeH / 2),
       w: px(centerTimeW),
@@ -250,10 +345,7 @@ WatchFace({
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL | ui.show_level.ONAL_AOD,
     };
-    this.centerTime = ui.createWidget(
-      ui.widget.TEXT,
-      this.centerTimeProperties
-    );
+    this.centerTime = ui.createWidget(ui.widget.TEXT, this.centerTimeProps);
 
     logger.log("CenterTime widget created.");
 
@@ -262,7 +354,7 @@ WatchFace({
      */
     const centerDateW = 180;
     const centerDateH = 30;
-    this.centerDateProperties = {
+    this.centerDateProps = {
       x: px(watchW / 2 - centerDateW / 2),
       y: px(watchW / 2 - centerDateH / 2 + 48),
       w: px(centerDateW),
@@ -276,10 +368,7 @@ WatchFace({
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
-    this.centerDate = ui.createWidget(
-      ui.widget.TEXT,
-      this.centerDateProperties
-    );
+    this.centerDate = ui.createWidget(ui.widget.TEXT, this.centerDateProps);
 
     logger.log("CenterDate widget created.");
 
@@ -288,7 +377,7 @@ WatchFace({
      */
     const centerDayW = 180;
     const centerDayH = 30;
-    this.centerDayProperties = {
+    this.centerDayProps = {
       x: px(watchW / 2 - centerDayW / 2),
       y: px(watchW / 2 - centerDayH / 2 - 46),
       w: px(centerDayW),
@@ -302,7 +391,7 @@ WatchFace({
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
-    this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProperties);
+    this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
 
     logger.log("CenterDay widget created.");
 
@@ -320,6 +409,41 @@ WatchFace({
       this.compass.onChange(() => this.compassCallback());
       if (!this.compassInterval) this.animateCompassDial();
     }
+  },
+
+  updateGauges() {
+    const { value: o2Readings, retCode: o2RetCode } = bloodOxygen.getCurrent();
+    const co2Readings = heartRate.getLast();
+
+    let o2 = mapO2(o2Readings);
+    if (![2, 8, 9].includes(o2RetCode) || o2Readings == 0) o2 = 24;
+
+    let co2 = mapCo2(co2Readings);
+    if (co2Readings == 0) co2 = 0;
+
+    o2 = Math.min(24 - co2, o2);
+
+    logger.debug(
+      "Updating o2 and co2 gauges. o2 is ",
+      o2Readings,
+      ", o2 retCode is",
+      o2RetCode,
+      ", co2 is ",
+      co2Readings,
+      ", co2 bleed is ",
+      co2Bleed[co2]
+    );
+
+    this.o2Props.src = gaugeImage("o2", o2);
+    this.co2Props.src = gaugeImage("co2", co2);
+
+    this.o2Props.alpha = o2 == 0 ? 0 : 255;
+    this.co2Props.alpha = co2 == 0 ? 0 : 255;
+
+    this.co2Props.pos_x = px(watchW / 2 + gaugeW / 2 - co2Bleed[co2]);
+
+    this.o2.setProperty(ui.prop.MORE, this.o2Props);
+    this.co2.setProperty(ui.prop.MORE, this.co2Props);
   },
 
   animateCompassDial() {
@@ -355,7 +479,10 @@ WatchFace({
     if (isNaN(angle) || angle === undefined || typeof angle != "number")
       return this.compassAngle;
 
-    return angle;
+    // The compass is not returning the current angle of North,
+    // but the angle of the direction the watch is facing.
+    // So we need to invert the angle to get the rotation for the dial.
+    return 360 - angle;
   },
 
   compassCallback() {
@@ -426,6 +553,7 @@ WatchFace({
 
     this.updateTime();
     this.updateDate();
+    this.updateGauges();
 
     if (this.compass) {
       this.compass.start();
@@ -438,6 +566,9 @@ WatchFace({
 
   onDestroy() {
     logger.log("Watchface destroy.");
+
+    bloodOxygen.stop();
+    bloodOxygen.offChange(callback);
 
     // When not needed for use
     if (this.compass) {
