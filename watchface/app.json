@@ -5,8 +5,8 @@
     "appName": "Starfield Atlantica",
     "appType": "watchface",
     "version": {
-      "code": 1,
-      "name": "1.0.0"
+      "code": 2,
+      "name": "1.0.1"
     },
     "vender": "zepp",
     "description": "Starfield watchface, made with precision and love.",

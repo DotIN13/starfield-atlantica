@@ -6,7 +6,7 @@ import { Time, BloodOxygen, HeartRate, Compass } from "@zos/sensor";
 const logger = log.getLogger("starfield-watchface");
 
 const watchW = 480;
-const gaugeW = 396;
+const gaugeW = 412;
 const time = new Time();
 const bloodOxygen = new BloodOxygen();
 const heartRate = new HeartRate();
@@ -80,32 +80,36 @@ const gaugeImage = (type, value) => {
   return img(`${type}/${value}.png`);
 };
 
-const mapO2 = (value) => {
-  if (value > 100) {
-    throw new Error("Value out of range. It must be between 95 and 100.");
+const mapO2 = (spo2Val, heartRateVal) => {
+  if (spo2Val > 100 || heartRateVal < 0) {
+    throw new Error("SpO2 or heartrate value out of range.");
   }
 
-  if (value < 95) return 0;
+  if (spo2Val < 94) return 0;
 
-  // Find the percentage of where the value lies within the range 95-100.
-  let percentage = (value - 95) / (100 - 95);
+  // Arbitrary index, just for fun: https://www.desmos.com/calculator/5avbjtd04b
+  let workoutIndex =
+    ((spo2Val - 94) / (100 - 94)) * 50 + 50 - ((heartRateVal - 80) / 80) * 50;
+  workoutIndex = Math.min(workoutIndex, 96);
+  workoutIndex = Math.max(workoutIndex, 0);
 
-  // Use that percentage to find the corresponding value within the range 1-24.
-  return parseInt(23 * percentage) + 1;
+  return parseInt(workoutIndex / 4);
 };
 
 const mapCo2 = (value) => {
-  if (value > 200) return 24;
-  if (value < 100) return 0;
+  const heartRateMin = 90;
 
-  let percentage = (value - 100) / (200 - 100);
+  if (value > 200) return 24;
+  if (value < heartRateMin) return 0;
+
+  let percentage = (value - heartRateMin) / (200 - heartRateMin);
 
   return parseInt(23 * percentage) + 1;
 };
 
 const co2Bleed = [
-  72, 72, 75, 81, 88, 98, 110, 124, 139, 155, 172, 190, 209, 232, 256, 279, 301,
-  321, 340, 356, 370, 381, 389, 394, 396,
+  89, 89, 92, 98, 105, 115, 127, 140, 155, 171, 189, 206, 225, 248, 272, 295,
+  317, 337, 355, 372, 386, 397, 405, 410, 413,
 ];
 
 const normalizeAngle = (angle) => {
@@ -228,7 +232,7 @@ WatchFace({
 
     this.o2Props = {
       x: px(0),
-      y: px(watchW / 2 - 13.6),
+      y: px(watchW / 2 - 22),
       w: px(watchW),
       h: px(watchW / 2),
       pos_x: px(watchW / 2 - gaugeW / 2),
@@ -241,7 +245,7 @@ WatchFace({
 
     this.co2Props = {
       x: px(0),
-      y: px(watchW / 2 - 13.6),
+      y: px(watchW / 2 - 22),
       w: px(watchW),
       h: px(watchW / 2),
       pos_x: px(watchW / 2 + gaugeW / 2 - co2Bleed[0]),
@@ -257,8 +261,8 @@ WatchFace({
       y: px(0),
       w: px(watchW),
       h: px(watchW / 2),
-      pos_x: px(watchW / 2 - gaugeW / 2 + 23),
-      pos_y: px(watchW / 2 - 30),
+      pos_x: px(watchW / 2 - 175),
+      pos_y: px(watchW / 2 - 32),
       src: img("o2.png"),
       // auto_scale: true,
       show_level: ui.show_level.ONLY_NORMAL,
@@ -269,19 +273,18 @@ WatchFace({
       y: px(0),
       w: px(watchW),
       h: px(watchW / 2),
-      pos_x: px(watchW / 2 + gaugeW / 2 - 53),
-      pos_y: px(watchW / 2 - 30),
+      pos_x: px(watchW / 2 + 144),
+      pos_y: px(watchW / 2 - 32),
       src: img("co2.png"),
       // auto_scale: true,
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
-    this.updateGauges();
-
-    bloodOxygen.onChange(() => this.updateGauges());
     bloodOxygen.start();
-
+    bloodOxygen.onChange(() => this.updateGauges());
     heartRate.onLastChange(() => this.updateGauges());
+
+    this.updateGauges();
 
     /**
      * Compass
@@ -324,7 +327,7 @@ WatchFace({
     //   show_level: ui.show_level.ONLY_NORMAL,
     // });
 
-    logger.log("StepProgress widget created.");
+    // logger.log("StepProgress widget created.");
 
     /**
      * Center time widget
@@ -412,24 +415,28 @@ WatchFace({
   },
 
   updateGauges() {
-    const { value: o2Readings, retCode: o2RetCode } = bloodOxygen.getCurrent();
-    const co2Readings = heartRate.getLast();
+    const { value: spo2Readings, retCode: o2RetCode } =
+      bloodOxygen.getCurrent();
+    const heartRateReadings = heartRate.getLast();
 
-    let o2 = mapO2(o2Readings);
-    if (![2, 8, 9].includes(o2RetCode) || o2Readings == 0) o2 = 24;
+    let o2 = mapO2(spo2Readings, heartRateReadings);
+    if (![2, 8, 9].includes(o2RetCode) || spo2Readings == 0) o2 = 24;
 
-    let co2 = mapCo2(co2Readings);
-    if (co2Readings == 0) co2 = 0;
+    let co2 = mapCo2(heartRateReadings);
+    if (heartRateReadings == 0) co2 = 0;
 
-    o2 = Math.min(24 - co2, o2);
+    // Debug
+    // co2 = 24
+
+    o2 = Math.min(24 - co2, o2); // The sum of o2 and co2 cannot be greater than 24
 
     logger.debug(
-      "Updating o2 and co2 gauges. o2 is ",
-      o2Readings,
+      "Updating o2 and co2 gauges. spo2 is ",
+      spo2Readings,
       ", o2 retCode is",
       o2RetCode,
-      ", co2 is ",
-      co2Readings,
+      ", heartrate is ",
+      heartRateReadings,
       ", co2 bleed is ",
       co2Bleed[co2]
     );
