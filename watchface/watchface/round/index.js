@@ -1,9 +1,12 @@
-import { log, px } from "@zos/utils";
 import { getScene, SCENE_AOD, SCENE_WATCHFACE } from "@zos/app";
 import ui from "@zos/ui";
 import { Time, BloodOxygen, HeartRate, Compass } from "@zos/sensor";
+import { assets, log, px } from "@zos/utils";
 
 const logger = log.getLogger("starfield-watchface");
+
+const aqiUrl =
+  "https://api.waqi.info/feed/shanghai/?token=823de469ce4aa7d59b9e5ae5cbfc6e00a37c47b0";
 
 const watchW = 480;
 const gaugeW = 412;
@@ -11,9 +14,7 @@ const time = new Time();
 const bloodOxygen = new BloodOxygen();
 const heartRate = new HeartRate();
 
-const img = (function (type) {
-  return (path) => type + "/" + path;
-})("images");
+const img = assets("images");
 
 function range(start, end, step = 1) {
   if (arguments.length === 1) {
@@ -80,31 +81,36 @@ const gaugeImage = (type, value) => {
   return img(`${type}/${value}.png`);
 };
 
-const mapO2 = (spo2Val, heartRateVal) => {
-  if (spo2Val > 100 || heartRateVal < 0) {
-    throw new Error("SpO2 or heartrate value out of range.");
-  }
+// Map O2 levels to heart rate readings
+const mapO2 = (value) => {
+  if (value == 0) return 24; // A zero reading indicates that the sensor is not working
 
-  if (spo2Val < 94) return 0;
+  const heartRateMin = 60;
+  const heartRateMax = 200;
 
-  // Arbitrary index, just for fun: https://www.desmos.com/calculator/5avbjtd04b
-  let workoutIndex =
-    ((spo2Val - 94) / (100 - 94)) * 50 + 50 - ((heartRateVal - 80) / 80) * 50;
-  workoutIndex = Math.min(workoutIndex, 96);
-  workoutIndex = Math.max(workoutIndex, 0);
+  if (value > heartRateMax) return 0;
+  if (value < heartRateMin) return 24;
 
-  return parseInt(workoutIndex / 4);
+  const percentage = (heartRateMax - value) / (heartRateMax - heartRateMin);
+
+  return parseInt(24 * percentage);
 };
 
+// Map CO2 levels to spo2 readings
 const mapCo2 = (value) => {
-  const heartRateMin = 90;
+  if (value == 0) return 0; // A zero reading indicates that the sensor is not working
 
-  if (value > 200) return 24;
-  if (value < heartRateMin) return 0;
+  const spo2Min = 90;
+  const spo2Max = 100;
 
-  let percentage = (value - heartRateMin) / (200 - heartRateMin);
+  if (value > spo2Max || value < spo2Min) {
+    logger.error("SpO2 value out of range, reading is ", value);
+    return 0;
+  }
 
-  return parseInt(23 * percentage) + 1;
+  const percentage = (spo2Max - value) ** 3 / 10 ** 3;
+
+  return parseInt(24 * percentage);
 };
 
 const co2Bleed = [
@@ -290,8 +296,12 @@ WatchFace({
      * Compass
      */
     if (this.screenType == SCENE_WATCHFACE) {
-      this.compass = new Compass();
-      this.compass.start();
+      try {
+        this.compass = new Compass();
+        this.compass.start();
+      } catch (e) {
+        logger.debug("Compass initialization error:", e);
+      }
 
       const compassW = 274;
       this.compassDial = ui.createWidget(ui.widget.IMG, {
@@ -344,7 +354,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb15.ttf",
+      font: "fonts/nb16.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL | ui.show_level.ONAL_AOD,
     };
@@ -367,7 +377,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb15.ttf",
+      font: "fonts/nb16.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -390,13 +400,11 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb15.ttf",
+      font: "fonts/nb16.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
     this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
-
-    logger.log("CenterDay widget created.");
 
     this.updateTime();
     this.updateDate();
@@ -404,42 +412,43 @@ WatchFace({
     time.onPerMinute(() => this.updateTime());
     time.onPerDay(() => this.updateDate());
 
+    logger.log("CenterDay widget created.");
+
     /**
      * Compass update
      */
     if (this.compass) {
-      logger.log("Starting compass animation.");
       this.compass.onChange(() => this.compassCallback());
       if (!this.compassInterval) this.animateCompassDial();
+      logger.log("Started compass animation.");
     }
   },
 
   updateGauges() {
-    const { value: spo2Readings, retCode: o2RetCode } =
+    const { value: spo2Readings, retCode: spo2RetCode } =
       bloodOxygen.getCurrent();
     const heartRateReadings = heartRate.getLast();
 
-    let o2 = mapO2(spo2Readings, heartRateReadings);
-    if (![2, 8, 9].includes(o2RetCode) || spo2Readings == 0) o2 = 24;
+    let o2 = mapO2(heartRateReadings);
+    let co2 = mapCo2(spo2Readings);
 
-    let co2 = mapCo2(heartRateReadings);
-    if (heartRateReadings == 0) co2 = 0;
+    if (![2, 8, 9].includes(spo2RetCode)) co2 = 0;
 
     // Debug
     // co2 = 24
 
     o2 = Math.min(24 - co2, o2); // The sum of o2 and co2 cannot be greater than 24
 
-    logger.debug(
-      "Updating o2 and co2 gauges. spo2 is ",
-      spo2Readings,
-      ", o2 retCode is",
-      o2RetCode,
-      ", heartrate is ",
-      heartRateReadings,
-      ", co2 bleed is ",
-      co2Bleed[co2]
-    );
+    // logger.debug(
+    //   "Updating o2 and co2 gauges. spo2 is ",
+    //   spo2Readings,
+    //   ", o2 retCode is",
+    //   o2RetCode,
+    //   ", heartrate is ",
+    //   heartRateReadings,
+    //   ", co2 bleed is ",
+    //   co2Bleed[co2]
+    // );
 
     this.o2Props.src = gaugeImage("o2", o2);
     this.co2Props.src = gaugeImage("co2", co2);
@@ -476,7 +485,7 @@ WatchFace({
       currentAngle += increment;
       currentAngle = normalizeAngle(currentAngle);
 
-      this.compassDial.setProperty(ui.prop.ANGLE, { angle: currentAngle });
+      this.compassDial.setProperty(ui.prop.ANGLE, currentAngle);
       this.compassDialAngle = currentAngle;
     }, 25);
   },
@@ -495,7 +504,7 @@ WatchFace({
   compassCallback() {
     if (this.compass.getStatus()) {
       // logger.debug("Direction:", this.compass.getDirection())
-      // logger.debug(this.compass.getDirectionAngle())
+      // logger.debug("Compass angle readings:", this.compass.getDirectionAngle());
       this.compassAngle = this.getCompassAngle();
     }
   },
@@ -563,11 +572,13 @@ WatchFace({
     this.updateGauges();
 
     if (this.compass) {
-      this.compass.start();
-      this.compassDial.setProperty(ui.prop.ANGLE, {
-        angle: this.getCompassAngle(),
-      });
-      if (!this.compassInterval) this.animateCompassDial();
+      try {
+        this.compass.start();
+        this.compassDial.setProperty(ui.prop.ANGLE, this.getCompassAngle());
+        if (!this.compassInterval) this.animateCompassDial();
+      } catch (e) {
+        logger.debug("Compass resume error:", e);
+      }
     }
   },
 
