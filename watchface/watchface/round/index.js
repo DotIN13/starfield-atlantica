@@ -1,6 +1,6 @@
 import { getScene, SCENE_AOD, SCENE_WATCHFACE } from "@zos/app";
 import ui from "@zos/ui";
-import { Time, BloodOxygen, HeartRate, Compass } from "@zos/sensor";
+import { Time, HeartRate, Compass } from "@zos/sensor";
 import { assets, log, px } from "@zos/utils";
 
 const logger = log.getLogger("starfield-watchface");
@@ -11,26 +11,21 @@ const aqiUrl =
 const watchW = 480;
 const gaugeW = 410;
 const compassW = 272;
+
 const time = new Time();
-const bloodOxygen = new BloodOxygen();
 const heartRate = new HeartRate();
 
 const img = assets("images");
 
-function range(start, end, step = 1) {
-  if (arguments.length === 1) {
-    end = start;
-    start = 0;
-    step = 1;
-  }
+const co2Bleed = [
+  89, 89, 92, 97, 105, 114, 126, 139, 154, 170, 187, 205, 223, 246, 270, 293,
+  315, 335, 353, 370, 384, 395, 403, 408, 410,
+];
 
-  const result = [];
-  for (let i = start; i < end; i += step) {
-    result.push(i);
-  }
-
-  return result;
-}
+// Image for o2 and co2 indicators
+const gaugeImage = (type, value) => {
+  return img(`${type}/${value}.png`);
+};
 
 const getFormatTime = () => {
   const hh = time.getFormatHour().toString().padStart(2, "0");
@@ -77,17 +72,16 @@ const getFormatDay = (day) => {
   return dayNames[day - 1];
 };
 
-// Image for o2 and co2 indicators
-const gaugeImage = (type, value) => {
-  return img(`${type}/${value}.png`);
-};
-
-// Map O2 levels to heart rate readings
+// Map O2 levels to past heart rate readings
 const mapO2 = (value) => {
-  if (value == 0) return 24; // A zero reading indicates that the sensor is not working
+  value = value.filter((v) => v > 0); // Remove 0 values
+  if (value.length == 0) return 24;
 
-  const heartRateMin = 70;
-  const heartRateMax = 200;
+  value = value.slice(-5); // Only use the last 5 readings
+  value = value.reduce((a, b) => a + b, 0) / value.length;
+
+  const heartRateMin = 80;
+  const heartRateMax = 150;
 
   if (value > heartRateMax) return 0;
   if (value < heartRateMin) return 24;
@@ -97,27 +91,19 @@ const mapO2 = (value) => {
   return parseInt(24 * percentage);
 };
 
-// Map CO2 levels to spo2 readings
 const mapCo2 = (value) => {
-  if (value == 0) return 0; // A zero reading indicates that the sensor is not working
+  if (value == 0) return 0;
 
-  const spo2Min = 90;
-  const spo2Max = 100;
+  const heartRateMin = 100;
+  const heartRateMax = 200;
 
-  if (value > spo2Max || value < spo2Min) {
-    logger.error("SpO2 value out of range, reading is ", value);
-    return 0;
-  }
+  if (value > heartRateMax) return 24;
+  if (value < heartRateMin) return 0;
 
-  const percentage = (spo2Max - value) ** 3 / 10 ** 3;
+  const percentage = (value - heartRateMin) / (heartRateMax - heartRateMin);
 
   return parseInt(24 * percentage);
 };
-
-const co2Bleed = [
-  89, 89, 92, 97, 105, 114, 126, 139, 154, 170, 187, 205, 223, 246, 270, 293,
-  315, 335, 353, 370, 384, 395, 403, 408, 410,
-];
 
 const normalizeAngle = (angle) => {
   while (angle < 0) angle += 360;
@@ -288,12 +274,6 @@ WatchFace({
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
-    bloodOxygen.start();
-    bloodOxygen.onChange(() => this.updateGauges());
-    heartRate.onLastChange(() => this.updateGauges());
-
-    this.updateGauges();
-
     /**
      * Compass
      */
@@ -407,6 +387,8 @@ WatchFace({
     };
     this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
 
+    // Callback registrations
+
     this.updateTime();
     this.updateDate();
 
@@ -414,6 +396,9 @@ WatchFace({
     time.onPerDay(() => this.updateDate());
 
     logger.log("CenterDay widget created.");
+
+    heartRate.onLastChange(() => this.updateGauges());
+    this.updateGauges();
 
     /**
      * Compass update
@@ -426,32 +411,18 @@ WatchFace({
   },
 
   updateGauges() {
-    const { value: spo2Readings, retCode: spo2RetCode } =
-      bloodOxygen.getCurrent();
     const heartRateReadings = heartRate.getLast();
+    const pastHeartRates = heartRate.getToday();
 
-    // logger.debug(heartRate.getToday()[0]);
-
-    let o2 = mapO2(heartRateReadings);
-    let co2 = mapCo2(spo2Readings);
-
-    if (![2, 8, 9].includes(spo2RetCode)) co2 = 0;
+    let o2 = mapO2(pastHeartRates);
+    let co2 = mapCo2(heartRateReadings);
 
     // Debug
     // co2 = 24;
 
     o2 = Math.min(24 - co2, o2); // The sum of o2 and co2 cannot be greater than 24
 
-    // logger.debug(
-    //   "Updating o2 and co2 gauges. spo2 is ",
-    //   spo2Readings,
-    //   ", o2 retCode is",
-    //   o2RetCode,
-    //   ", heartrate is ",
-    //   heartRateReadings,
-    //   ", co2 bleed is ",
-    //   co2Bleed[co2]
-    // );
+    // logger.debug("Current heartrate: ", heartRateReadings, ", Readings today: ", pastHeartRates);
 
     this.o2Props.src = gaugeImage("o2", o2);
     this.co2Props.src = gaugeImage("co2", co2);
@@ -588,8 +559,7 @@ WatchFace({
   onDestroy() {
     logger.log("Watchface destroy.");
 
-    bloodOxygen.stop();
-    bloodOxygen.offChange(callback);
+    heartRate.offLastChange();
 
     // When not needed for use
     if (this.compass) {
