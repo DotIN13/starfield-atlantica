@@ -9,7 +9,8 @@ const aqiUrl =
   "https://api.waqi.info/feed/shanghai/?token=823de469ce4aa7d59b9e5ae5cbfc6e00a37c47b0";
 
 const watchW = 480;
-const gaugeW = 412;
+const gaugeW = 410;
+const compassW = 272;
 const time = new Time();
 const bloodOxygen = new BloodOxygen();
 const heartRate = new HeartRate();
@@ -85,7 +86,7 @@ const gaugeImage = (type, value) => {
 const mapO2 = (value) => {
   if (value == 0) return 24; // A zero reading indicates that the sensor is not working
 
-  const heartRateMin = 60;
+  const heartRateMin = 70;
   const heartRateMax = 200;
 
   if (value > heartRateMax) return 0;
@@ -114,8 +115,8 @@ const mapCo2 = (value) => {
 };
 
 const co2Bleed = [
-  89, 89, 92, 98, 105, 115, 127, 140, 155, 171, 189, 206, 225, 248, 272, 295,
-  317, 337, 355, 372, 386, 397, 405, 410, 413,
+  89, 89, 92, 97, 105, 114, 126, 139, 154, 170, 187, 205, 223, 246, 270, 293,
+  315, 335, 353, 370, 384, 395, 403, 408, 410,
 ];
 
 const normalizeAngle = (angle) => {
@@ -220,6 +221,7 @@ WatchFace({
         center_y: px(watchW / 2),
         radius: px(circleRadius),
         color: 0xffffff,
+        alpha: 240,
         show_level: ui.show_level.ONLY_NORMAL,
       });
 
@@ -303,7 +305,6 @@ WatchFace({
         logger.debug("Compass initialization error:", e);
       }
 
-      const compassW = 274;
       this.compassDial = ui.createWidget(ui.widget.IMG, {
         x: px(watchW / 2 - compassW / 2),
         y: px(watchW / 2 - compassW / 2),
@@ -313,9 +314,9 @@ WatchFace({
         pos_y: px(0),
         center_x: px(compassW / 2),
         center_y: px(compassW / 2),
-        src: img("compass/compass.png"),
+        src: img("compass/compass@2x.png"),
         angle: this.getCompassAngle(),
-        // auto_scale: true,
+        auto_scale: true,
         show_level: ui.show_level.ONLY_NORMAL,
       });
 
@@ -354,7 +355,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb16.ttf",
+      font: "fonts/nb18.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL | ui.show_level.ONAL_AOD,
     };
@@ -377,7 +378,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb16.ttf",
+      font: "fonts/nb18.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -400,7 +401,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb16.ttf",
+      font: "fonts/nb18.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -429,13 +430,15 @@ WatchFace({
       bloodOxygen.getCurrent();
     const heartRateReadings = heartRate.getLast();
 
+    // logger.debug(heartRate.getToday()[0]);
+
     let o2 = mapO2(heartRateReadings);
     let co2 = mapCo2(spo2Readings);
 
     if (![2, 8, 9].includes(spo2RetCode)) co2 = 0;
 
     // Debug
-    // co2 = 24
+    // co2 = 24;
 
     o2 = Math.min(24 - co2, o2); // The sum of o2 and co2 cannot be greater than 24
 
