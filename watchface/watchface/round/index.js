@@ -1,7 +1,18 @@
-import { getScene, SCENE_AOD, SCENE_WATCHFACE } from "@zos/app";
+import { getScene, SCENE_WATCHFACE } from "@zos/app";
 import ui from "@zos/ui";
 import { Time, HeartRate, Compass } from "@zos/sensor";
-import { assets, log, px } from "@zos/utils";
+import { log, px } from "@zos/utils";
+import {
+  getFormatDate,
+  getFormatDay,
+  getFormatTime,
+  mapO2,
+  mapCo2,
+  img,
+  gaugeImage,
+  normalizeAngle,
+  shortestAnglePath,
+} from "./utils.js";
 
 const logger = log.getLogger("starfield-watchface");
 
@@ -15,120 +26,13 @@ const compassW = 272;
 const time = new Time();
 const heartRate = new HeartRate();
 
-const img = assets("images");
-
 const co2Bleed = [
   89, 89, 92, 97, 105, 114, 126, 139, 154, 170, 187, 205, 223, 246, 270, 293,
   315, 335, 353, 370, 384, 395, 403, 408, 410,
 ];
 
-// Image for o2 and co2 indicators
-const gaugeImage = (type, value) => {
-  return img(`${type}/${value}.png`);
-};
-
-const getFormatTime = () => {
-  const hh = time.getFormatHour().toString().padStart(2, "0");
-  const mm = time.getMinutes().toString().padStart(2, "0");
-  return `${hh}:${mm}`;
-};
-
 const allChars =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-const getFormatDate = (month, day) => {
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  // Debug
-  // month = Math.floor(Math.random() * 12);
-
-  return `${monthNames[month - 1]} ${day}`;
-};
-
-const getFormatDay = (day) => {
-  const dayNames = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
-
-  return dayNames[day - 1];
-};
-
-// Map O2 levels to past heart rate readings
-const mapO2 = (value) => {
-  value = value.filter((v) => v > 0); // Remove 0 values
-  if (value.length == 0) return 24;
-
-  value = value.slice(-5); // Only use the last 5 readings
-  value = value.reduce((a, b) => a + b, 0) / value.length;
-
-  const heartRateMin = 80;
-  const heartRateMax = 150;
-
-  if (value > heartRateMax) return 0;
-  if (value < heartRateMin) return 24;
-
-  const percentage = (heartRateMax - value) / (heartRateMax - heartRateMin);
-
-  return parseInt(24 * percentage);
-};
-
-const mapCo2 = (value) => {
-  if (value == 0) return 0;
-
-  const heartRateMin = 100;
-  const heartRateMax = 200;
-
-  if (value > heartRateMax) return 24;
-  if (value < heartRateMin) return 0;
-
-  const percentage = (value - heartRateMin) / (heartRateMax - heartRateMin);
-
-  return parseInt(24 * percentage);
-};
-
-const normalizeAngle = (angle) => {
-  while (angle < 0) angle += 360;
-  while (angle >= 360) angle -= 360;
-  return angle;
-};
-
-const shortestAnglePath = (angle1, angle2) => {
-  // Normalize angles
-  angle1 = angle1 % 360;
-  angle2 = angle2 % 360;
-
-  // Calculate clockwise difference
-  let clockwiseDiff = (angle2 - angle1 + 360) % 360;
-
-  // Calculate counterclockwise difference
-  let counterclockwiseDiff = clockwiseDiff - 360;
-
-  // Choose the shortest path by magnitude
-  if (Math.abs(clockwiseDiff) <= Math.abs(counterclockwiseDiff)) {
-    return clockwiseDiff;
-  } else {
-    return counterclockwiseDiff;
-  }
-};
 
 WatchFace({
   initView() {
@@ -147,6 +51,26 @@ WatchFace({
     this.compass = null;
     this.compassDialAngle = 0;
     this.compassAngle = 0;
+
+    this.planetView = false;
+
+    // Create the outer clockhand ring
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: px(watchW / 2),
+      center_y: px(watchW / 2),
+      radius: px(watchW / 2),
+      color: 0xffffff,
+      alpha: 26,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: px(watchW / 2),
+      center_y: px(watchW / 2),
+      radius: px(watchW / 2 - 10),
+      color: 0x000000,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
 
     /**
      * Clockhands
@@ -181,44 +105,44 @@ WatchFace({
     /**
      * Clock background
      */
-    if (this.screenType == SCENE_AOD) {
-      this.imgBg = ui.createWidget(ui.widget.FILL_RECT, {
-        x: px(0),
-        y: px(0),
-        w: px(watchW),
-        h: px(watchW),
-        color: 0x000000,
-      });
-    } else {
-      this.imgBg = ui.createWidget(ui.widget.IMG, {
-        x: px(0),
-        y: px(0),
-        w: px(watchW),
-        h: px(watchW),
-        src: img("bg/bg.png"),
-        // auto_scale: true,
-        show_level: ui.show_level.ONLY_NORMAL,
-      });
 
-      // Draw a white circle, and then draw a black circle with 1 less pixels of radius, to create a white ring
-      const circleRadius = 195;
-      const circle = ui.createWidget(ui.widget.CIRCLE, {
-        center_x: px(watchW / 2),
-        center_y: px(watchW / 2),
-        radius: px(circleRadius),
-        color: 0xffffff,
-        alpha: 240,
-        show_level: ui.show_level.ONLY_NORMAL,
-      });
+    ui.createWidget(ui.widget.FILL_RECT, {
+      x: px(0),
+      y: px(0),
+      w: px(watchW),
+      h: px(watchW),
+      color: 0x000000,
+      show_level: ui.show_level.ONLY_AOD,
+    });
 
-      const circle2 = ui.createWidget(ui.widget.CIRCLE, {
-        center_x: px(watchW / 2),
-        center_y: px(watchW / 2),
-        radius: px(circleRadius - 2),
-        color: 0x000000,
-        show_level: ui.show_level.ONLY_NORMAL,
-      });
-    }
+    ui.createWidget(ui.widget.IMG, {
+      x: px(0),
+      y: px(0),
+      w: px(watchW),
+      h: px(watchW),
+      src: img("bg/bg.png"),
+      // auto_scale: true,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    // Draw a white circle, and then draw a black circle with 1 less pixels of radius, to create a white ring
+    const circleRadius = 195;
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: px(watchW / 2),
+      center_y: px(watchW / 2),
+      radius: px(circleRadius),
+      color: 0xffffff,
+      alpha: 220,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: px(watchW / 2),
+      center_y: px(watchW / 2),
+      radius: px(circleRadius - 2),
+      color: 0x000000,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
 
     /**
      * O2 and CO2 indicators
@@ -387,6 +311,32 @@ WatchFace({
     };
     this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
 
+    // Planet Sphere
+    const planetW = 188;
+    this.planet = ui.createWidget(ui.widget.IMG, {
+      x: px(watchW / 2 - planetW / 2),
+      y: px(watchW / 2 - planetW / 2),
+      w: px(planetW),
+      h: px(planetW),
+      pos_x: px(0),
+      pos_y: px(0),
+      center_x: px(planetW / 2),
+      center_y: px(planetW / 2),
+      src: img("planet/1.png"),
+      auto_scale: true,
+      alpha: 0,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
+    this.planet.addEventListener(ui.event.CLICK_DOWN, () => {
+      this.planetView = !this.planetView;
+      const p = this.planetView;
+      this.planet.setProperty(ui.prop.ALPHA, p ? 255 : 0);
+      this.centerDay.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
+      this.centerDate.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
+      this.centerTime.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
+    });
+
     // Callback registrations
 
     this.updateTime();
@@ -488,7 +438,14 @@ WatchFace({
     if (!this.centerTime) return;
     if (this.currentTime == time.getTime()) return;
 
-    this.centerTime.setProperty(ui.prop.TEXT, getFormatTime());
+    const hours = time.getHours();
+    const minutes = time.getMinutes();
+
+    const planetIndex = parseInt(hours * 2 + minutes / 30 + 1);
+    const planetImage = img(`planet/${planetIndex}.png`);
+    this.planet.setProperty(ui.prop.SRC, planetImage);
+
+    this.centerTime.setProperty(ui.prop.TEXT, getFormatTime(hours, minutes));
 
     this.currentTime = time.getTime();
   },
