@@ -54,20 +54,23 @@ WatchFace({
 
     this.planetView = false;
 
-    // Create the outer clockhand ring
+    /**
+     * Outer Clockhand Ring
+     */
+
     ui.createWidget(ui.widget.CIRCLE, {
       center_x: px(watchW / 2),
       center_y: px(watchW / 2),
       radius: px(watchW / 2),
       color: 0xffffff,
-      alpha: 26,
+      alpha: 20,
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
     ui.createWidget(ui.widget.CIRCLE, {
       center_x: px(watchW / 2),
       center_y: px(watchW / 2),
-      radius: px(watchW / 2 - 10),
+      radius: px(watchW / 2 - 9),
       color: 0x000000,
       show_level: ui.show_level.ONLY_NORMAL,
     });
@@ -132,7 +135,7 @@ WatchFace({
       center_y: px(watchW / 2),
       radius: px(circleRadius),
       color: 0xffffff,
-      alpha: 220,
+      alpha: 240,
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
@@ -179,7 +182,7 @@ WatchFace({
       y: px(0),
       w: px(watchW),
       h: px(watchW / 2),
-      pos_x: px(watchW / 2 - 175),
+      pos_x: px(watchW / 2 - 173.5),
       pos_y: px(watchW / 2 - 32),
       src: img("o2.png"),
       // auto_scale: true,
@@ -191,7 +194,7 @@ WatchFace({
       y: px(0),
       w: px(watchW),
       h: px(watchW / 2),
-      pos_x: px(watchW / 2 + 144),
+      pos_x: px(watchW / 2 + 142.5),
       pos_y: px(watchW / 2 - 32),
       src: img("co2.png"),
       // auto_scale: true,
@@ -247,42 +250,53 @@ WatchFace({
     /**
      * Center time widget
      */
-    const centerTimeW = 180;
-    const centerTimeH = 60;
+    const centerTimeW = 200;
+    const centerTimeH = 70;
     this.centerTimeProps = {
       x: px(watchW / 2 - centerTimeW / 2),
       y: px(watchW / 2 - centerTimeH / 2),
       w: px(centerTimeW),
       h: px(centerTimeH),
       color: 0xffffff,
-      text_size: 60,
+      text_size: 64,
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb18.ttf",
+      font: "fonts/nb19.ttf",
       text: allChars,
-      show_level: ui.show_level.ONLY_NORMAL | ui.show_level.ONAL_AOD,
+      show_level: ui.show_level.ONLY_NORMAL,
     };
     this.centerTime = ui.createWidget(ui.widget.TEXT, this.centerTimeProps);
+
+    // AOD Center Time
+    this.aodCenterTimeProps = {
+      ...this.centerTimeProps,
+      text_size: 60,
+      show_level: ui.show_level.ONAL_AOD,
+    };
+    this.aodCenterTime = ui.createWidget(
+      ui.widget.TEXT,
+      this.aodCenterTimeProps
+    );
 
     logger.log("CenterTime widget created.");
 
     /**
      * Center date widget
      */
-    const centerDateW = 180;
+    const centerDateW = 200;
     const centerDateH = 30;
     this.centerDateProps = {
       x: px(watchW / 2 - centerDateW / 2),
-      y: px(watchW / 2 - centerDateH / 2 + 48),
+      y: px(watchW / 2 - centerDateH / 2 + 51),
       w: px(centerDateW),
       h: px(centerDateH),
       color: 0xffffff,
-      text_size: 24,
+      text_size: 27,
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb18.ttf",
+      font: "fonts/nb19.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -293,26 +307,26 @@ WatchFace({
     /**
      * Center day-of-the-week widget
      */
-    const centerDayW = 180;
+    const centerDayW = 200;
     const centerDayH = 30;
     this.centerDayProps = {
       x: px(watchW / 2 - centerDayW / 2),
-      y: px(watchW / 2 - centerDayH / 2 - 46),
+      y: px(watchW / 2 - centerDayH / 2 - 47.5),
       w: px(centerDayW),
       h: px(centerDayH),
       color: 0xffffff,
-      text_size: 24,
+      text_size: 27,
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb18.ttf",
+      font: "fonts/nb19.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
     this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
 
     // Planet Sphere
-    const planetW = 188;
+    const planetW = 180;
     this.planet = ui.createWidget(ui.widget.IMG, {
       x: px(watchW / 2 - planetW / 2),
       y: px(watchW / 2 - planetW / 2),
@@ -328,10 +342,26 @@ WatchFace({
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
+    const planetLabelW = 79;
+    const planetLabelH = 29;
+    this.planetLabel = ui.createWidget(ui.widget.IMG, {
+      x: px(watchW / 2 - planetLabelW / 2),
+      y: px(watchW / 2 + planetW / 2 - 1),
+      w: px(planetLabelW),
+      h: px(planetLabelH),
+      pos_x: px(0),
+      pos_y: px(0),
+      src: img("earth.png"),
+      auto_scale: false,
+      alpha: 0,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
+
     this.planet.addEventListener(ui.event.CLICK_DOWN, () => {
       this.planetView = !this.planetView;
       const p = this.planetView;
       this.planet.setProperty(ui.prop.ALPHA, p ? 255 : 0);
+      this.planetLabel.setProperty(ui.prop.ALPHA, p ? 255 : 0);
       this.centerDay.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
       this.centerDate.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
       this.centerTime.setProperty(ui.prop.COLOR, p ? 0x000000 : 0xffffff);
@@ -446,6 +476,7 @@ WatchFace({
     this.planet.setProperty(ui.prop.SRC, planetImage);
 
     this.centerTime.setProperty(ui.prop.TEXT, getFormatTime(hours, minutes));
+    this.aodCenterTime.setProperty(ui.prop.TEXT, getFormatTime(hours, minutes));
 
     this.currentTime = time.getTime();
   },
