@@ -178,26 +178,22 @@ WatchFace({
     this.co2 = ui.createWidget(ui.widget.IMG, this.co2Props);
 
     const o2Label = ui.createWidget(ui.widget.IMG, {
-      x: px(0),
-      y: px(0),
-      w: px(watchW),
-      h: px(watchW / 2),
-      pos_x: px(watchW / 2 - 173.5),
-      pos_y: px(watchW / 2 - 32),
-      src: img("o2.png"),
-      // auto_scale: true,
+      x: px(watchW / 2 - 177.5),
+      y: px(watchW / 2 - 35),
+      w: px(32),
+      h: px(29),
+      src: img("o2@2x.png"),
+      auto_scale: true,
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
     const co2Label = ui.createWidget(ui.widget.IMG, {
-      x: px(0),
-      y: px(0),
-      w: px(watchW),
-      h: px(watchW / 2),
-      pos_x: px(watchW / 2 + 142.5),
-      pos_y: px(watchW / 2 - 32),
-      src: img("co2.png"),
-      // auto_scale: true,
+      x: px(watchW / 2 + 138.5),
+      y: px(watchW / 2 - 35),
+      w: px(47),
+      h: px(29),
+      src: img("co2@2x.png"),
+      auto_scale: true,
       show_level: ui.show_level.ONLY_NORMAL,
     });
 
@@ -262,7 +258,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb19.ttf",
+      font: "fonts/nb22.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -296,7 +292,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb19.ttf",
+      font: "fonts/nb22.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -319,11 +315,25 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb19.ttf",
+      font: "fonts/nb22.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
     this.centerDay = ui.createWidget(ui.widget.TEXT, this.centerDayProps);
+
+    // Planet Label
+    const planetLabelW = 196;
+    const planetLabelH = 218;
+    this.planetLabel = ui.createWidget(ui.widget.IMG, {
+      x: px(watchW / 2 - planetLabelW / 2),
+      y: px(watchW / 2 - planetLabelH / 2 + 12),
+      w: px(planetLabelW),
+      h: px(planetLabelH),
+      src: img("planet-labels/earth@2x.png"),
+      auto_scale: true,
+      alpha: 0,
+      show_level: ui.show_level.ONLY_NORMAL,
+    });
 
     // Planet Sphere
     const planetW = 180;
@@ -332,27 +342,12 @@ WatchFace({
       y: px(watchW / 2 - planetW / 2),
       w: px(planetW),
       h: px(planetW),
-      pos_x: px(0),
-      pos_y: px(0),
+      pos_x: px(-1.4),
+      pos_y: px(-1.2),
       center_x: px(planetW / 2),
       center_y: px(planetW / 2),
       src: img("planet/1.png"),
       auto_scale: true,
-      alpha: 0,
-      show_level: ui.show_level.ONLY_NORMAL,
-    });
-
-    const planetLabelW = 79;
-    const planetLabelH = 29;
-    this.planetLabel = ui.createWidget(ui.widget.IMG, {
-      x: px(watchW / 2 - planetLabelW / 2),
-      y: px(watchW / 2 + planetW / 2 - 1),
-      w: px(planetLabelW),
-      h: px(planetLabelH),
-      pos_x: px(0),
-      pos_y: px(0),
-      src: img("earth.png"),
-      auto_scale: false,
       alpha: 0,
       show_level: ui.show_level.ONLY_NORMAL,
     });
