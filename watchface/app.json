@@ -1,23 +1,23 @@
 {
   "configVersion": "v3",
   "app": {
-    "appId": 26584,
+    "appId": 1036655,
     "appName": "Starfield Atlantica",
     "appType": "watchface",
     "version": {
       "code": 2,
-      "name": "1.0.1"
+      "name": "1.0.2"
     },
     "vender": "zepp",
     "description": "Starfield watchface, made with precision and love.",
     "icon": "images/preview.png"
   },
-  "permissions": ["device:os.compass", "data:user.hd.spo2", "data:user.hd.heart_rate"],
+  "permissions": ["device:os.compass", "data:user.hd.heart_rate"],
   "runtime": {
     "apiVersion": {
-      "compatible": "3.0.0",
-      "target": "3.0.0",
-      "minVersion": "3.0.0"
+      "compatible": "2.0.0",
+      "target": "2.0.0",
+      "minVersion": "2.0.0"
     }
   },
   "targets": {

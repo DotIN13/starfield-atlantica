@@ -13,6 +13,7 @@ import {
   normalizeAngle,
   shortestAnglePath,
 } from "./utils.js";
+import charWidths from "./char-widths.js"
 
 const logger = log.getLogger("starfield-watchface");
 
@@ -213,8 +214,6 @@ WatchFace({
         y: px(watchW / 2 - compassW / 2),
         w: px(compassW),
         h: px(compassW),
-        pos_x: px(0),
-        pos_y: px(0),
         center_x: px(compassW / 2),
         center_y: px(compassW / 2),
         src: img("compass/compass@2x.png"),
