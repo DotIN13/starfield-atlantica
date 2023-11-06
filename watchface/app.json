@@ -10,7 +10,7 @@
     },
     "vender": "zepp",
     "description": "Starfield watchface, made with precision and love.",
-    "icon": "images/preview.png"
+    "icon": "images/preview-324.png"
   },
   "permissions": ["device:os.compass", "data:user.hd.heart_rate"],
   "runtime": {
@@ -26,7 +26,7 @@
         "watchface": {
           "path": "watchface/gtr-3-pro/index",
           "main": 1,
-          "editable": 1,
+          "editable": 0,
           "lockscreen": 1
         }
       },
@@ -50,6 +50,9 @@
   "i18n": {
     "en-US": {
       "name": "Starfield Atlantica"
+    },
+    "zh-CN": {
+      "name": "星空：亚特兰蒂斯"
     }
   },
   "defaultLanguage": "en-US",

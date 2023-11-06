@@ -257,7 +257,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb22.ttf",
+      font: "fonts/nb23.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -291,7 +291,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb22.ttf",
+      font: "fonts/nb23.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -314,7 +314,7 @@ WatchFace({
       align_h: ui.align.CENTER_H,
       align_v: ui.align.CENTER_V,
       text_style: ui.text_style.NONE,
-      font: "fonts/nb22.ttf",
+      font: "fonts/nb23.ttf",
       text: allChars,
       show_level: ui.show_level.ONLY_NORMAL,
     };
@@ -391,10 +391,11 @@ WatchFace({
     let o2 = mapO2(pastHeartRates);
     let co2 = mapCo2(heartRateReadings);
 
-    // Debug
-    // co2 = 24;
-
     o2 = Math.min(24 - co2, o2); // The sum of o2 and co2 cannot be greater than 24
+
+    // Debug
+    // co2 = 0;
+    // o2 = 24;
 
     // logger.debug("Current heartrate: ", heartRateReadings, ", Readings today: ", pastHeartRates);
 
